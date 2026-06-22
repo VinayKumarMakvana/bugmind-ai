@@ -15,5 +15,5 @@ openai
 langchain-text-splitters
 pyjwt
 passlib[bcrypt]
-bcrypt
+bcrypt==3.2.2
 psycopg2-binary
