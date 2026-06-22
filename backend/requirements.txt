@@ -5,12 +5,12 @@ celery
 redis
 httpx
 python-dotenv
-pydantic==2.9.2
+pydantic>=2.9.0
 pydantic-settings
 semgrep
 bandit
 pylint
-chromadb
+chromadb>=1.5.0
 openai
 langchain-text-splitters
 pyjwt
