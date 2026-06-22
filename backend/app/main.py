@@ -23,6 +23,10 @@ app.include_router(webhooks.router, prefix=settings.API_V1_STR + "/webhooks", ta
 app.include_router(repos.router, prefix=settings.API_V1_STR + "/repos", tags=["repos"])
 app.include_router(chat.router, prefix=settings.API_V1_STR + "/chat", tags=["chat"])
 
+# Add Github OAuth router
+from .api.v1 import github
+app.include_router(github.router, prefix=settings.API_V1_STR + "/github", tags=["github"])
+
 # Add new stream router
 from .api.v1 import stream
 app.include_router(stream.router, prefix=settings.API_V1_STR + "/stream", tags=["stream"])

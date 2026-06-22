@@ -69,6 +69,14 @@ export default function Dashboard() {
     router.push("/login");
   };
 
+  const handleConnectGithub = () => {
+    const token = localStorage.getItem("token");
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://bugmind-ai.onrender.com/api/v1";
+    if (token) {
+      window.location.href = `${apiUrl}/github/login?token=${token}`;
+    }
+  };
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
@@ -110,7 +118,7 @@ export default function Dashboard() {
             <h1 className="text-3xl font-bold mb-2 tracking-tight">Repositories</h1>
             <p className="text-muted text-sm">Manage connected GitHub repos and monitor AI health scores.</p>
           </motion.div>
-          <motion.button variants={itemVariants} className="px-5 py-2 bg-foreground text-background font-semibold rounded-md hover:bg-foreground/90 transition-colors flex items-center gap-2 text-sm">
+          <motion.button onClick={handleConnectGithub} variants={itemVariants} className="px-5 py-2 bg-foreground text-background font-semibold rounded-md hover:bg-foreground/90 transition-colors flex items-center gap-2 text-sm">
             <GitPullRequest className="w-4 h-4" /> Add Repository
           </motion.button>
         </motion.div>
@@ -125,7 +133,7 @@ export default function Dashboard() {
             <GitPullRequest className="w-8 h-8 text-muted mb-4" />
             <h3 className="text-base font-semibold text-foreground">No repositories found</h3>
             <p className="mt-1 text-sm text-muted">Connect your GitHub account to start reviewing code.</p>
-            <button className="mt-6 px-5 py-2 bg-card border border-border text-sm font-medium rounded-md hover:bg-card/80 transition-colors">
+            <button onClick={handleConnectGithub} className="mt-6 px-5 py-2 bg-card border border-border text-sm font-medium rounded-md hover:bg-card/80 transition-colors">
               Connect Account
             </button>
           </div>

@@ -13,12 +13,7 @@ def get_dashboard_data(
 ):
     repos = db.query(Repository).filter(Repository.user_id == current_user.id).all()
     
-    # If no repos exist (e.g. fresh db), let's mock one for the dashboard
-    if not repos:
-        mock_repo = Repository(name="acme-corp/frontend-app", github_repo_id="test_repo", user_id=current_user.id)
-        db.add(mock_repo)
-        db.commit()
-        repos = [mock_repo]
+    # Mock code removed to allow real Github repos to show up
     
     dashboard_data = []
     for repo in repos:
