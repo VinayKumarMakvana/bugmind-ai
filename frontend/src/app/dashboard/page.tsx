@@ -20,6 +20,15 @@ export default function Dashboard() {
   const router = useRouter();
 
   useEffect(() => {
+    // Intercept token from URL (Github OAuth callback)
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlToken = urlParams.get('token');
+    if (urlToken) {
+      localStorage.setItem("token", urlToken);
+      // Clean the URL without refreshing
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     const token = localStorage.getItem("token");
     if (!token) {
       router.push("/login");

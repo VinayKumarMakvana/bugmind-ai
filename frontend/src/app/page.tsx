@@ -31,7 +31,7 @@ export default function Home() {
           <Link href="/dashboard" className="text-sm font-medium hover:text-muted transition-colors">
             Dashboard
           </Link>
-          <a href="/login" className="px-5 py-2 bg-foreground text-background rounded-md text-sm font-semibold hover:bg-foreground/90 transition-colors flex items-center gap-2">
+          <a href={`${process.env.NEXT_PUBLIC_API_URL || "https://bugmind-ai.onrender.com/api/v1"}/github/login`} className="px-5 py-2 bg-foreground text-background rounded-md text-sm font-semibold hover:bg-foreground/90 transition-colors flex items-center gap-2">
             <Code2 className="w-4 h-4" />
             Connect GitHub
           </a>
