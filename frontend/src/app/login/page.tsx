@@ -19,6 +19,18 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      // Form Validation (Boundation)
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        throw new Error("Please enter a valid email address");
+      }
+      if (password.length < 6) {
+        throw new Error("Password must be at least 6 characters long");
+      }
+      if (!isLogin && name.trim().length < 2) {
+        throw new Error("Name must be at least 2 characters long");
+      }
+
       if (isLogin) {
         const formData = new URLSearchParams();
         formData.append("username", email);
