@@ -5,7 +5,7 @@ celery
 redis
 httpx
 python-dotenv
-pydantic
+pydantic==2.9.2
 pydantic-settings
 semgrep
 bandit
