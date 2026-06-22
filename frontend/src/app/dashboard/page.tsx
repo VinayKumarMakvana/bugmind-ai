@@ -27,7 +27,7 @@ export default function Dashboard() {
     }
 
     const fetchDashboard = () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://bugmind-ai.onrender.com/api/v1";
       fetch(`${apiUrl}/repos/dashboard`, {
         headers: { "Authorization": `Bearer ${token}` }
       })
@@ -53,7 +53,7 @@ export default function Dashboard() {
 
     fetchDashboard();
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://bugmind-ai.onrender.com/api/v1";
     const eventSource = new EventSource(`${apiUrl}/stream/events`);
     eventSource.addEventListener("update", (event) => {
       fetchDashboard();

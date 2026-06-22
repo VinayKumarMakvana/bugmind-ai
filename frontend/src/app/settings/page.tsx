@@ -29,7 +29,7 @@ export default function SettingsPage() {
     }
 
     const fetchProfile = async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://bugmind-ai.onrender.com/api/v1";
       try {
         const res = await fetch(`${apiUrl}/auth/me`, {
           headers: { "Authorization": `Bearer ${token}` }
@@ -67,7 +67,7 @@ export default function SettingsPage() {
     setMessage({ text: "", type: "" });
 
     const token = localStorage.getItem("token");
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://bugmind-ai.onrender.com/api/v1";
     
     // Only send the fields that have been typed into (to not overwrite existing hidden keys with empty string)
     const updatePayload: any = { name: profile.name };

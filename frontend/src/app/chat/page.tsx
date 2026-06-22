@@ -20,7 +20,7 @@ export default function ChatPage() {
     }
     
     // Fetch History
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://bugmind-ai.onrender.com/api/v1";
     fetch(`${apiUrl}/chat/history/${repoId}`, {
       headers: { "Authorization": `Bearer ${token}` }
     })
@@ -61,7 +61,7 @@ export default function ChatPage() {
     const token = localStorage.getItem("token");
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://bugmind-ai.onrender.com/api/v1";
       const response = await fetch(`${apiUrl}/chat/stream`, {
         method: "POST",
         headers: { 
@@ -83,7 +83,7 @@ export default function ChatPage() {
         if (done) {
             // Need to fetch history to get the newly created session id if we didn't have one
             if (!sessionId) {
-              const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+              const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://bugmind-ai.onrender.com/api/v1";
               fetch(`${apiUrl}/chat/history/${repoId}`, {
                 headers: { "Authorization": `Bearer ${token}` }
                 })
@@ -133,7 +133,7 @@ export default function ChatPage() {
     setIsTyping(true);
     const token = localStorage.getItem("token");
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://bugmind-ai.onrender.com/api/v1";
       const res = await fetch(`${apiUrl}/chat/generate-tests`, {
         method: "POST",
         headers: { 
