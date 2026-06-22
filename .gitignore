@@ -1,0 +1,16 @@
+# Backend
+backend/venv/
+backend/chroma_db/
+backend/__pycache__/
+**/*.pyc
+backend/bugmind.db
+backend/.env
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/.env.local
+frontend/out/
+
+# General
+.DS_Store

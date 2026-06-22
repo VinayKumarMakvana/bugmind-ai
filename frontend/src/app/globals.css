@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-glass: var(--glass-bg);
+  --color-card: var(--card-bg);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-fg);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+}
+
+:root {
+  /* Clean, stark minimal dark theme */
+  --background: #000000;
+  --foreground: #ededed;
+  --border: #222222;
+  --glass-bg: #0a0a0a;
+  --card-bg: #111111;
+  --primary: #ffffff;
+  --primary-fg: #000000;
+  --muted: #888888;
+  --accent: #3b82f6;
+}
+
+[data-theme="light"] {
+  --background: #ffffff;
+  --foreground: #111111;
+  --border: #eaeaea;
+  --glass-bg: #fafafa;
+  --card-bg: #ffffff;
+  --primary: #000000;
+  --primary-fg: #ffffff;
+  --muted: #666666;
+  --accent: #0070f3;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.glass {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+}
+
+.text-gradient {
+  color: var(--foreground);
+}
