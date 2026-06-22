@@ -24,7 +24,8 @@ export default function LoginPage() {
         formData.append("username", email);
         formData.append("password", password);
 
-        const res = await fetch("http://localhost:8000/api/v1/auth/login", {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+        const res = await fetch(`${apiUrl}/auth/login`, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: formData,
@@ -36,7 +37,8 @@ export default function LoginPage() {
         localStorage.setItem("token", data.access_token);
         router.push("/dashboard");
       } else {
-        const res = await fetch("http://localhost:8000/api/v1/auth/register", {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+        const res = await fetch(`${apiUrl}/auth/register`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password, name }),
@@ -48,7 +50,7 @@ export default function LoginPage() {
         const formData = new URLSearchParams();
         formData.append("username", email);
         formData.append("password", password);
-        const loginRes = await fetch("http://localhost:8000/api/v1/auth/login", {
+        const loginRes = await fetch(`${apiUrl}/auth/login`, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: formData,
