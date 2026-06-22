@@ -43,7 +43,10 @@ export default function LoginPage() {
           body: formData,
         });
 
-        if (!res.ok) throw new Error("Invalid credentials");
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => null);
+          throw new Error(errorData?.detail || `Login failed with status: ${res.status}`);
+        }
         
         const data = await res.json();
         localStorage.setItem("token", data.access_token);
@@ -56,7 +59,10 @@ export default function LoginPage() {
           body: JSON.stringify({ email, password, name }),
         });
 
-        if (!res.ok) throw new Error("Registration failed. Email might exist.");
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => null);
+          throw new Error(errorData?.detail || `Registration failed with status: ${res.status}`);
+        }
         
         // Auto login after register
         const formData = new URLSearchParams();
