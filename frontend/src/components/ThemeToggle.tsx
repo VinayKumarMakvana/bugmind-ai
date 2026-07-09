@@ -9,6 +9,7 @@ export function ThemeToggle() {
     // Check saved theme or system preference
     const saved = localStorage.getItem("theme");
     const isDark = saved === "dark" || (!saved && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    // eslint-disable-next-line
     setTheme(isDark ? "dark" : "light");
     document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
   }, []);

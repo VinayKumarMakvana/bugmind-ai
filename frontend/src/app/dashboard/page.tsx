@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Shield, GitPullRequest, AlertCircle, Activity, LogOut, ChevronRight, Settings } from "lucide-react";
+import { Shield, GitPullRequest, AlertCircle, LogOut, Settings, Upload } from "lucide-react";
 
 type RepoData = {
   id: string;
@@ -18,71 +18,102 @@ export default function Dashboard() {
   const [repos, setRepos] = useState<RepoData[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchDashboard = useCallback(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+    fetch(`${apiUrl}/repos/dashboard`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    })
+      .then(res => {
+        if (!res.ok) {
+          if (res.status === 401) {
+            localStorage.removeItem("token");
+            router.push("/login");
+          }
+          throw new Error("Failed to fetch dashboard data");
+        }
+        return res.json();
+      })
+      .then(data => {
+        setRepos(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to fetch dashboard data:", err);
+        setLoading(false);
+      });
+  }, [router]);
 
   useEffect(() => {
-    // Intercept token from URL (Github OAuth callback)
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlToken = urlParams.get('token');
-    if (urlToken) {
-      localStorage.setItem("token", urlToken);
-      // Clean the URL without refreshing
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-
     const token = localStorage.getItem("token");
     if (!token) {
       router.push("/login");
       return;
     }
 
-    const fetchDashboard = () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://bugmind-ai.onrender.com/api/v1";
-      fetch(`${apiUrl}/repos/dashboard`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      })
-        .then(res => {
-          if (!res.ok) {
-            if (res.status === 401) {
-              localStorage.removeItem("token");
-              router.push("/login");
-            }
-            throw new Error("Failed to fetch dashboard data");
-          }
-          return res.json();
-        })
-        .then(data => {
-          setRepos(data);
-          setLoading(false);
-        })
-        .catch(err => {
-          console.error("Failed to fetch dashboard data:", err);
-          setLoading(false);
-        });
-    };
-
     fetchDashboard();
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://bugmind-ai.onrender.com/api/v1";
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
     const eventSource = new EventSource(`${apiUrl}/stream/events`);
-    eventSource.addEventListener("update", (event) => {
+    eventSource.addEventListener("update", () => {
       fetchDashboard();
     });
 
     return () => {
       eventSource.close();
     };
-  }, [router]);
+  }, [fetchDashboard, router]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     router.push("/login");
   };
 
-  const handleConnectGithub = () => {
+  const handleUploadFolder = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    setLoading(true);
+    
+    const formData = new FormData();
+    const dateStr = new Date().toLocaleString();
+    const repoName = `Code Snippet - ${dateStr}`;
+    
+    formData.append("repo_name", repoName);
+    
+    for (let i = 0; i < files.length; i++) {
+      formData.append("files", files[i]);
+    }
+
     const token = localStorage.getItem("token");
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://bugmind-ai.onrender.com/api/v1";
-    if (token) {
-      window.location.href = `${apiUrl}/github/login?token=${token}`;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+    
+    try {
+      const res = await fetch(`${apiUrl}/repos/upload`, {
+        method: 'POST',
+        headers: { "Authorization": `Bearer ${token}` },
+        body: formData
+      });
+      
+      if (!res.ok) {
+        throw new Error("Failed to upload repository");
+      }
+      
+      fetchDashboard();
+    } catch (err) {
+      console.error(err);
+      setLoading(false);
+    }
+    
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
@@ -124,12 +155,22 @@ export default function Dashboard() {
       <main className="flex-1 max-w-6xl mx-auto w-full p-6 mt-8">
         <motion.div initial="hidden" animate="visible" variants={containerVariants} className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-10 gap-4">
           <motion.div variants={itemVariants}>
-            <h1 className="text-3xl font-bold mb-2 tracking-tight">Repositories</h1>
-            <p className="text-muted text-sm">Manage connected GitHub repos and monitor AI health scores.</p>
+            <h1 className="text-3xl font-bold mb-2 tracking-tight">Code Snippets</h1>
+            <p className="text-muted text-sm">Upload code files and monitor AI health scores.</p>
           </motion.div>
-          <motion.button onClick={handleConnectGithub} variants={itemVariants} className="px-5 py-2 bg-foreground text-background font-semibold rounded-md hover:bg-foreground/90 transition-colors flex items-center gap-2 text-sm">
-            <GitPullRequest className="w-4 h-4" /> Add Repository
-          </motion.button>
+          <motion.div variants={itemVariants}>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              style={{ display: "none" }} 
+              onChange={handleUploadFolder} 
+              accept=".htm,.html,.js,.jsx,.ts,.tsx,.css,.json"
+              multiple 
+            />
+            <button onClick={() => fileInputRef.current?.click()} className="px-5 py-2 bg-foreground text-background font-semibold rounded-md hover:bg-foreground/90 transition-colors flex items-center gap-2 text-sm cursor-pointer">
+              <Upload className="w-4 h-4" /> Upload Code
+            </button>
+          </motion.div>
         </motion.div>
 
         {loading ? (
@@ -139,11 +180,11 @@ export default function Dashboard() {
           </div>
         ) : repos.length === 0 ? (
           <div className="col-span-full py-20 flex flex-col items-center justify-center text-center border border-dashed border-border rounded-xl bg-card/30">
-            <GitPullRequest className="w-8 h-8 text-muted mb-4" />
-            <h3 className="text-base font-semibold text-foreground">No repositories found</h3>
-            <p className="mt-1 text-sm text-muted">Connect your GitHub account to start reviewing code.</p>
-            <button onClick={handleConnectGithub} className="mt-6 px-5 py-2 bg-card border border-border text-sm font-medium rounded-md hover:bg-card/80 transition-colors">
-              Connect Account
+            <Upload className="w-8 h-8 text-muted mb-4" />
+            <h3 className="text-base font-semibold text-foreground">No code found</h3>
+            <p className="mt-1 text-sm text-muted">Upload code files to start reviewing.</p>
+            <button onClick={() => fileInputRef.current?.click()} className="mt-6 px-5 py-2 bg-card border border-border text-sm font-medium rounded-md hover:bg-card/80 transition-colors cursor-pointer">
+              Upload Code
             </button>
           </div>
         ) : (
@@ -166,9 +207,9 @@ export default function Dashboard() {
                 <div className="grid grid-cols-2 gap-3 mt-auto">
                   <div className="bg-background rounded-lg border border-border p-3">
                     <div className="text-xs text-muted font-medium mb-1 flex items-center gap-1">
-                      <GitPullRequest className="w-3 h-3" /> PRs
+                      <GitPullRequest className="w-3 h-3" /> Files
                     </div>
-                    <span className="font-semibold">{repo.prs}</span>
+                    <span className="font-semibold">Local</span>
                   </div>
                   <div className="bg-background rounded-lg border border-border p-3">
                     <div className="text-xs text-muted font-medium mb-1 flex items-center gap-1">

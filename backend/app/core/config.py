@@ -5,17 +5,22 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     
     # Database
-    DATABASE_URL: str = "sqlite:///./bugmind.db"
+    DATABASE_URL: str = "mongodb://localhost:27017/bugmind"
     
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
     
     # GitHub App & API Configuration (Global)
     GITHUB_CLIENT_ID: str = ""
+    GITHUB_CLIENT_SECRET: str = ""
     GITHUB_APP_ID: str = ""
     GITHUB_WEBHOOK_SECRET: str = ""
     GITHUB_API_BASE_URL: str = "https://api.github.com"
     
+    # Google OAuth
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+
     # System Fallback LLM Settings (Users should provide their own in DB)
     OPENAI_API_KEY: str = ""
     

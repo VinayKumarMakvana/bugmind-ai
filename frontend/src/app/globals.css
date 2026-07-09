@@ -13,28 +13,28 @@
 }
 
 :root {
-  /* Clean, stark minimal dark theme */
+  /* Gemini Advanced Dark Theme (Premium) */
   --background: #000000;
-  --foreground: #ededed;
-  --border: #222222;
-  --glass-bg: #0a0a0a;
-  --card-bg: #111111;
-  --primary: #ffffff;
+  --foreground: #f3f3f3;
+  --border: rgba(255, 255, 255, 0.1);
+  --glass-bg: rgba(20, 20, 25, 0.6);
+  --card-bg: #131314;
+  --primary: #8ab4f8;
   --primary-fg: #000000;
-  --muted: #888888;
-  --accent: #3b82f6;
+  --muted: #a8c7fa;
+  --accent: #8ab4f8;
 }
 
 [data-theme="light"] {
-  --background: #ffffff;
-  --foreground: #111111;
-  --border: #eaeaea;
-  --glass-bg: #fafafa;
+  --background: #f0f4f9;
+  --foreground: #1f1f1f;
+  --border: #e0e0e0;
+  --glass-bg: rgba(255, 255, 255, 0.7);
   --card-bg: #ffffff;
-  --primary: #000000;
+  --primary: #0b57d0;
   --primary-fg: #ffffff;
-  --muted: #666666;
-  --accent: #0070f3;
+  --muted: #444746;
+  --accent: #0b57d0;
 }
 
 body {
@@ -46,11 +46,63 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-.glass {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
+/* Scale down the entire UI proportionally on mobile screens */
+html {
+  font-size: 16px;
 }
 
-.text-gradient {
-  color: var(--foreground);
+@media (max-width: 768px) {
+  html {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  html {
+    font-size: 10px;
+  }
+}
+
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.gemini-shadow {
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255,255,255,0.05);
+}
+
+.gemini-gradient-text {
+  background: linear-gradient(90deg, #8ab4f8, #c58af9, #8ab4f8);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shine 4s linear infinite;
+}
+
+.hover-lift {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px -8px rgba(138, 180, 248, 0.15), inset 0 1px 1px rgba(255,255,255,0.1);
+}
+
+@keyframes shine {
+  to {
+    background-position: 200% center;
+  }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
 }

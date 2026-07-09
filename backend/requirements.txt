@@ -1,8 +1,8 @@
 fastapi
 uvicorn
-sqlalchemy
-celery
-redis
+motor
+certifi
+
 httpx
 python-dotenv
 pydantic>=2.9.0
@@ -15,4 +15,3 @@ openai
 langchain-text-splitters
 pyjwt
 bcrypt>=4.0.0
-psycopg2-binary

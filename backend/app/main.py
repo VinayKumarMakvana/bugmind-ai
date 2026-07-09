@@ -2,11 +2,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
 from .api.v1 import auth, webhooks, repos, chat
-from .models.base import Base
-from .db.session import engine
-
-# Initialize DB
-Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
@@ -23,13 +18,17 @@ app.include_router(webhooks.router, prefix=settings.API_V1_STR + "/webhooks", ta
 app.include_router(repos.router, prefix=settings.API_V1_STR + "/repos", tags=["repos"])
 app.include_router(chat.router, prefix=settings.API_V1_STR + "/chat", tags=["chat"])
 
-# Add Github OAuth router
-from .api.v1 import github
-app.include_router(github.router, prefix=settings.API_V1_STR + "/github", tags=["github"])
+
 
 # Add new stream router
 from .api.v1 import stream
 app.include_router(stream.router, prefix=settings.API_V1_STR + "/stream", tags=["stream"])
+
+@app.on_event("startup")
+async def startup_event():
+    import asyncio
+    from .core.events import event_manager
+    event_manager.set_loop(asyncio.get_running_loop())
 
 @app.get("/")
 def root():

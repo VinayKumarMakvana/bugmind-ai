@@ -36,7 +36,7 @@ export default function LoginPage() {
         formData.append("username", email);
         formData.append("password", password);
 
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://bugmind-ai.onrender.com/api/v1";
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
         const res = await fetch(`${apiUrl}/auth/login`, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -52,7 +52,7 @@ export default function LoginPage() {
         localStorage.setItem("token", data.access_token);
         router.push("/dashboard");
       } else {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://bugmind-ai.onrender.com/api/v1";
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
         const res = await fetch(`${apiUrl}/auth/register`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -77,8 +77,12 @@ export default function LoginPage() {
         localStorage.setItem("token", data.access_token);
         router.push("/dashboard");
       }
-    } catch (err: any) {
-      setError(err.message || "An error occurred");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("An error occurred");
+      }
     } finally {
       setLoading(false);
     }

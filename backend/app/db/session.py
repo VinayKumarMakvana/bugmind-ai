@@ -1,17 +1,11 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+import certifi
+from motor.motor_asyncio import AsyncIOMotorClient
 from ..core.config import settings
 
-engine_args = {}
-if settings.DATABASE_URL.startswith("sqlite"):
-    engine_args["connect_args"] = {"check_same_thread": False}
+client = AsyncIOMotorClient(settings.DATABASE_URL, tlsCAFile=certifi.where())
+parsed_db_name = settings.DATABASE_URL.rsplit('/', 1)[-1].split('?')[0] if '/' in settings.DATABASE_URL.split('://')[-1] else ''
+db_name = parsed_db_name if parsed_db_name else 'bugmind'
+db = client[db_name]
 
-engine = create_engine(settings.DATABASE_URL, **engine_args)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+async def get_db():
+    yield db

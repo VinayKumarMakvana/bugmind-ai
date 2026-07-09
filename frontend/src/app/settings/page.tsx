@@ -14,12 +14,10 @@ export default function SettingsPage() {
   const [profile, setProfile] = useState({
     name: "",
     email: "",
-    openai_api_key: "",
-    github_access_token: ""
+    openai_api_key: ""
   });
 
   const [hasOpenAIKey, setHasOpenAIKey] = useState(false);
-  const [hasGitHubToken, setHasGitHubToken] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -29,7 +27,7 @@ export default function SettingsPage() {
     }
 
     const fetchProfile = async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://bugmind-ai.onrender.com/api/v1";
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
       try {
         const res = await fetch(`${apiUrl}/auth/me`, {
           headers: { "Authorization": `Bearer ${token}` }
@@ -50,7 +48,6 @@ export default function SettingsPage() {
           email: data.email
         }));
         setHasOpenAIKey(data.has_openai_key);
-        setHasGitHubToken(data.has_github_token);
         setLoading(false);
       } catch (err) {
         console.error(err);
@@ -67,12 +64,11 @@ export default function SettingsPage() {
     setMessage({ text: "", type: "" });
 
     const token = localStorage.getItem("token");
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://bugmind-ai.onrender.com/api/v1";
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
     
     // Only send the fields that have been typed into (to not overwrite existing hidden keys with empty string)
-    const updatePayload: any = { name: profile.name };
+    const updatePayload: Record<string, string> = { name: profile.name };
     if (profile.openai_api_key) updatePayload.openai_api_key = profile.openai_api_key;
-    if (profile.github_access_token) updatePayload.github_access_token = profile.github_access_token;
 
     try {
       const res = await fetch(`${apiUrl}/auth/me`, {
@@ -88,12 +84,11 @@ export default function SettingsPage() {
       
       const data = await res.json();
       setHasOpenAIKey(data.has_openai_key);
-      setHasGitHubToken(data.has_github_token);
       
       // Clear input fields after saving (keys are hidden)
-      setProfile(prev => ({ ...prev, openai_api_key: "", github_access_token: "" }));
+      setProfile(prev => ({ ...prev, openai_api_key: "" }));
       setMessage({ text: "Settings saved successfully", type: "success" });
-    } catch (err) {
+    } catch {
       setMessage({ text: "Error saving settings", type: "error" });
     } finally {
       setSaving(false);
@@ -176,20 +171,7 @@ export default function SettingsPage() {
                   </div>
                   <p className="text-xs text-muted mt-1">Used for AI Copilot and Auto-fixes. Requires GPT-4 access.</p>
                 </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-muted mb-1">GitHub Personal Access Token</label>
-                  <div className="flex items-center gap-2">
-                    <input 
-                      type="password" 
-                      placeholder={hasGitHubToken ? "•••••••••••••••••••••••••••• (Token is set)" : "ghp_..."}
-                      value={profile.github_access_token}
-                      onChange={e => setProfile({...profile, github_access_token: e.target.value})}
-                      className="flex-1 bg-background border border-border rounded-md px-4 py-2.5 text-sm focus:border-foreground outline-none transition-colors"
-                    />
-                  </div>
-                  <p className="text-xs text-muted mt-1">Used to post review comments and open PRs. Needs `repo` scope.</p>
-                </div>
+
               </div>
             </div>
 
