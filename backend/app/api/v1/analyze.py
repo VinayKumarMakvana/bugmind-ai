@@ -53,7 +53,7 @@ async def analyze_snippet(
             bugs.append({
                 "severity": severity_mapped,
                 "title": title,
-                "description": rf.get("suggested_fix", rf.get("description", "No suggested fix available."))
+                "description": rf.get("suggested_fix", f"**AI Review Failed**\n\nThe AI reviewer could not generate a fix for this issue (Check OpenAI API Key on your server).\n\n**Raw Error:**\n`{rf.get('description', '')}`")
             })
             
         summary = "Analysis completed. No issues found." if not bugs else f"Analysis completed. Found {len(bugs)} issues."

@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import Editor from "@monaco-editor/react";
-import { Play, Loader2, Sparkles, AlertCircle, ChevronDown, Check } from "lucide-react";
+import { Play, Loader2, Sparkles, AlertCircle, ChevronDown, Check, TerminalSquare, X, Layout } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 
 const LANGUAGES = [
   { id: "javascript", name: "JavaScript", ext: "js" },
@@ -36,6 +37,9 @@ export default function EditorPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<{ summary?: string, bugs?: { severity: string, title: string, description: string }[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [executionOutput, setExecutionOutput] = useState<{ status: string, output: string } | null>(null);
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [showTerminal, setShowTerminal] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [editorFontSize, setEditorFontSize] = useState(14);
   const [selectedLang, setSelectedLang] = useState(LANGUAGES[0]);
@@ -107,6 +111,73 @@ export default function EditorPage() {
     }
   };
 
+  const handleRunCode = async () => {
+    if (!code.trim()) return;
+    setShowTerminal(true);
+    setExecutionOutput(null);
+
+    // Handle HTML & CSS Live Preview
+    if (selectedLang.id === "html") {
+      setExecutionOutput({ status: "preview", output: code });
+      return;
+    }
+    
+    if (selectedLang.id === "css") {
+      const wrappedCss = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>${code}</style>
+        </head>
+        <body>
+          <div class="preview-container" style="padding: 20px; font-family: sans-serif;">
+            <h1>CSS Preview</h1>
+            <p>This is a sample paragraph to test your CSS styles.</p>
+            <button>Sample Button</button>
+            <div class="box">A Box</div>
+          </div>
+        </body>
+        </html>
+      `;
+      setExecutionOutput({ status: "preview", output: wrappedCss });
+      return;
+    }
+
+    setIsExecuting(true);
+
+    try {
+      const token = localStorage.getItem("token");
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+      
+      const response = await fetch(`${API_URL}/execute`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          code_content: code,
+          language: selectedLang.id
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Execution failed. Check backend connection.");
+      }
+
+      const data = await response.json();
+      setExecutionOutput(data);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setExecutionOutput({ status: "error", output: err.message });
+      } else {
+        setExecutionOutput({ status: "error", output: "Something went wrong during execution." });
+      }
+    } finally {
+      setIsExecuting(false);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem("token");
     router.push("/");
@@ -130,6 +201,14 @@ export default function EditorPage() {
         
         <div className="flex gap-4 items-center">
           <button 
+            onClick={handleRunCode}
+            disabled={isExecuting}
+            className="flex items-center gap-2 px-5 py-2 bg-green-500/10 text-green-500 border border-green-500/20 rounded-full text-sm font-medium hover:bg-green-500/20 transition-colors disabled:opacity-50 gemini-shadow cursor-pointer"
+          >
+            {isExecuting ? <Loader2 className="w-4 h-4 animate-spin" /> : <TerminalSquare className="w-4 h-4" />}
+            Run Code
+          </button>
+          <button 
             onClick={handleAnalyze}
             disabled={isAnalyzing}
             className="flex items-center gap-2 px-5 py-2 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 gemini-shadow cursor-pointer"
@@ -146,8 +225,11 @@ export default function EditorPage() {
       {/* Floating Card Layout */}
       <div className="flex-1 flex flex-col md:flex-row gap-6 p-6 h-auto md:h-[calc(100vh-73px)] max-w-[1800px] w-full mx-auto">
         
-        {/* Editor Card */}
-        <div className="flex-1 min-h-[400px] md:min-h-0 rounded-3xl border border-border bg-card gemini-shadow overflow-hidden flex flex-col">
+        {/* Editor & Terminal Column */}
+        <div className="flex-1 flex flex-col gap-6 min-h-[400px] md:min-h-0">
+          
+          {/* Editor Card */}
+          <div className="flex-1 rounded-3xl border border-border bg-card gemini-shadow overflow-hidden flex flex-col">
           <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-card">
             <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">Code Editor</h2>
             <div className="relative" ref={langMenuRef}>
@@ -197,7 +279,55 @@ export default function EditorPage() {
           </div>
         </div>
 
-        {/* AI Assistant Card */}
+        {/* Terminal/Preview Card */}
+        {showTerminal && (
+          <div className="h-[250px] shrink-0 rounded-3xl border border-border bg-card gemini-shadow overflow-hidden flex flex-col animate-in slide-in-from-bottom-4 duration-500">
+            <div className="px-6 py-3 border-b border-border flex justify-between items-center bg-card">
+              <div className="flex items-center gap-2">
+                {executionOutput?.status === "preview" ? (
+                  <Layout className="w-4 h-4 text-muted" />
+                ) : (
+                  <TerminalSquare className="w-4 h-4 text-muted" />
+                )}
+                <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">
+                  {executionOutput?.status === "preview" ? "Live Preview" : "Terminal Output"}
+                </h2>
+              </div>
+              <button onClick={() => setShowTerminal(false)} className="text-muted hover:text-foreground transition-colors cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            {executionOutput?.status === "preview" ? (
+              <div className="flex-1 bg-white overflow-hidden">
+                <iframe
+                  srcDoc={executionOutput.output}
+                  className="w-full h-full border-0"
+                  title="Live Preview"
+                  sandbox="allow-scripts"
+                />
+              </div>
+            ) : (
+              <div className="flex-1 p-4 bg-[#1e1e1e] overflow-y-auto font-mono text-sm">
+                {isExecuting ? (
+                  <div className="flex items-center gap-3 text-muted animate-pulse">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Executing code...</span>
+                  </div>
+                ) : executionOutput ? (
+                  <pre className={`whitespace-pre-wrap ${executionOutput.status === 'error' ? 'text-red-400' : 'text-green-400'}`}>
+                    {executionOutput.output}
+                  </pre>
+                ) : (
+                  <span className="text-muted">No output</span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* AI Assistant Card */}
         <div className="w-full md:w-[450px] lg:w-[500px] min-h-[400px] md:min-h-0 rounded-3xl border border-border bg-card gemini-shadow overflow-hidden flex flex-col">
           <div className="px-6 py-4 border-b border-border flex items-center gap-2 bg-card">
             <Sparkles className="w-4 h-4 text-accent" />
@@ -258,7 +388,9 @@ export default function EditorPage() {
                           </span>
                         </div>
                         <h5 className="font-medium text-sm mb-1">{bug.title}</h5>
-                        <p className="text-xs text-muted leading-relaxed">{bug.description}</p>
+                        <div className="text-xs text-muted leading-relaxed prose prose-invert max-w-none prose-sm prose-pre:bg-black/50 prose-pre:border prose-pre:border-border">
+                          <ReactMarkdown>{bug.description}</ReactMarkdown>
+                        </div>
                       </div>
                     ))}
                   </div>
