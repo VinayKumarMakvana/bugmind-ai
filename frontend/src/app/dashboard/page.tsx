@@ -167,7 +167,7 @@ export default function Dashboard() {
               accept=".htm,.html,.js,.jsx,.ts,.tsx,.css,.json"
               multiple 
             />
-            <button onClick={() => fileInputRef.current?.click()} className="px-5 py-2 bg-foreground text-background font-semibold rounded-md hover:bg-foreground/90 transition-colors flex items-center gap-2 text-sm cursor-pointer">
+            <button onClick={() => fileInputRef.current?.click()} className="px-5 py-2.5 bg-primary text-primary-foreground font-semibold rounded-full hover:opacity-90 transition-all flex items-center gap-2 text-sm cursor-pointer gemini-shadow hover-lift">
               <Upload className="w-4 h-4" /> Upload Code
             </button>
           </motion.div>
@@ -183,8 +183,8 @@ export default function Dashboard() {
             <Upload className="w-8 h-8 text-muted mb-4" />
             <h3 className="text-base font-semibold text-foreground">No code found</h3>
             <p className="mt-1 text-sm text-muted">Upload code files to start reviewing.</p>
-            <button onClick={() => fileInputRef.current?.click()} className="mt-6 px-5 py-2 bg-card border border-border text-sm font-medium rounded-md hover:bg-card/80 transition-colors cursor-pointer">
-              Upload Code
+            <button onClick={() => fileInputRef.current?.click()} className="mt-6 px-6 py-3 bg-primary text-primary-foreground text-sm font-medium rounded-full hover:opacity-90 transition-all flex items-center gap-2 cursor-pointer gemini-shadow hover-lift">
+              <Upload className="w-4 h-4" /> Upload Code
             </button>
           </div>
         ) : (

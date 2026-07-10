@@ -20,9 +20,10 @@ app.include_router(chat.router, prefix=settings.API_V1_STR + "/chat", tags=["cha
 
 
 
-# Add new stream router
-from .api.v1 import stream
+# Add new stream and analyze routers
+from .api.v1 import stream, analyze
 app.include_router(stream.router, prefix=settings.API_V1_STR + "/stream", tags=["stream"])
+app.include_router(analyze.router, prefix=settings.API_V1_STR + "/analyze", tags=["analyze"])
 
 @app.on_event("startup")
 async def startup_event():

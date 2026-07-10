@@ -2,11 +2,21 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Shield, Zap, Code2, ArrowRight, Sparkles } from "lucide-react";
+import { Shield, Zap, Code2, ArrowRight, Sparkles, Upload } from "lucide-react";
+import { useState, useEffect } from "react";
 
 
 export default function Home() {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+  const [mounted, setMounted] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    if (localStorage.getItem("token")) {
+      setIsLoggedIn(true);
+    }
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground relative overflow-hidden">
@@ -25,9 +35,19 @@ export default function Home() {
           <Link href="/editor" className="text-sm font-medium hover:text-primary transition-colors">
             Try Web IDE
           </Link>
-          <Link href="/login" className="px-5 py-2 bg-foreground text-background rounded-full text-sm font-medium hover:bg-foreground/90 transition-all flex items-center gap-2 gemini-shadow hover-lift">
-            Sign in
-          </Link>
+          {mounted ? (
+            isLoggedIn ? (
+              <Link href="/dashboard" className="px-5 py-2 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:opacity-90 transition-all flex items-center gap-2 gemini-shadow hover-lift">
+                Dashboard
+              </Link>
+            ) : (
+              <Link href="/login" className="px-5 py-2 bg-foreground text-background rounded-full text-sm font-medium hover:bg-foreground/90 transition-all flex items-center gap-2 gemini-shadow hover-lift">
+                Sign in
+              </Link>
+            )
+          ) : (
+            <div className="w-24 h-9"></div>
+          )}
         </div>
       </nav>
 
@@ -46,10 +66,14 @@ export default function Home() {
           The cleanest AI-powered Web IDE. Paste your code and receive instant, precise analysis and bug-free solutions with complete guidance.
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-md mb-16">
-          <Link href="/editor" className="w-full py-4 bg-foreground text-background font-semibold rounded-full hover:scale-105 transition-all duration-300 gemini-shadow flex items-center justify-center gap-2 group">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-xl mb-16">
+          <Link href="/editor" className="w-full sm:w-1/2 py-4 bg-foreground text-background font-semibold rounded-full hover:scale-105 transition-all duration-300 gemini-shadow flex items-center justify-center gap-2 group">
             Launch Web IDE 
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
+          </Link>
+          <Link href="/dashboard" className="w-full sm:w-1/2 py-4 bg-card border border-border text-foreground font-semibold rounded-full hover:border-primary transition-all duration-300 hover:scale-105 flex items-center justify-center gap-2 group glass">
+            <Upload className="w-5 h-5 group-hover:-translate-y-1 transition-transform text-primary" />
+            Upload Code
           </Link>
         </div>
 
