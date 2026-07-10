@@ -7,15 +7,17 @@ import { useState, useEffect } from "react";
 
 
 export default function Home() {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
   const [mounted, setMounted] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-    if (localStorage.getItem("token")) {
-      setIsLoggedIn(true);
-    }
+    const timer = setTimeout(() => {
+      setMounted(true);
+      if (localStorage.getItem("token")) {
+        setIsLoggedIn(true);
+      }
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   return (

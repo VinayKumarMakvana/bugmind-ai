@@ -21,7 +21,11 @@ async def upload_repository(
     repo_id = str(uuid.uuid4())
     workspace_dir = os.path.join(os.getcwd(), "workspaces", repo_id)
     os.makedirs(workspace_dir, exist_ok=True)
-    allowed_extensions = {".htm", ".html", ".js", ".jsx", ".ts", ".tsx", ".css", ".json"}
+    allowed_extensions = {
+        ".htm", ".html", ".js", ".jsx", ".ts", ".tsx", ".css", ".json", 
+        ".py", ".java", ".cpp", ".c", ".cs", ".go", ".rs", ".php", ".rb", 
+        ".swift", ".kt", ".dart", ".sql", ".yaml", ".md", ".sh"
+    }
     
     for file in files:
         ext = os.path.splitext(file.filename)[1].lower()

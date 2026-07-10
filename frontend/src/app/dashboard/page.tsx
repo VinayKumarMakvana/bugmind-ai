@@ -190,7 +190,7 @@ export default function Dashboard() {
         ) : (
           <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {repos.map((repo) => (
-              <motion.div key={repo.id} variants={itemVariants} className="p-5 rounded-xl border border-border bg-card hover:border-muted transition-all cursor-pointer group flex flex-col min-h-[180px]">
+              <motion.div key={repo.id} variants={itemVariants} className="p-5 rounded-xl border border-border bg-card group flex flex-col min-h-[180px]">
                 <div className="flex justify-between items-start mb-4">
                   <h3 className="font-semibold text-lg text-foreground group-hover:text-accent transition-colors">
                     {repo.name}

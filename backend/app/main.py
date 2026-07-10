@@ -17,10 +17,6 @@ app.include_router(auth.router, prefix=settings.API_V1_STR + "/auth", tags=["aut
 app.include_router(webhooks.router, prefix=settings.API_V1_STR + "/webhooks", tags=["webhooks"])
 app.include_router(repos.router, prefix=settings.API_V1_STR + "/repos", tags=["repos"])
 app.include_router(chat.router, prefix=settings.API_V1_STR + "/chat", tags=["chat"])
-
-
-
-# Add new stream, analyze and execute routers
 from .api.v1 import stream, analyze, execute
 app.include_router(stream.router, prefix=settings.API_V1_STR + "/stream", tags=["stream"])
 app.include_router(analyze.router, prefix=settings.API_V1_STR + "/analyze", tags=["analyze"])
