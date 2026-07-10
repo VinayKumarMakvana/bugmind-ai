@@ -26,7 +26,7 @@ def generate_review(pr_diff: str, findings: list, context_chunks: list, user_ope
     )
     
     prompt = f"""
-    Please review the following Pull Request data.
+    Please review the following code.
     
     # Static Analysis Findings
     {json.dumps(findings, indent=2)}
@@ -34,13 +34,16 @@ def generate_review(pr_diff: str, findings: list, context_chunks: list, user_ope
     # Relevant Code Context (RAG)
     {chr(10).join(context_chunks)}
     
-    # PR Diff
+    # Code to Review
     {pr_diff}
     
-    Task: For each finding in the Static Analysis Findings list, provide a highly detailed `suggested_fix`.
-    The `suggested_fix` MUST use GitHub flavored markdown, include code snippets if applicable, and explain *why* the fix works based on the RAG context.
+    Task: 
+    1. Analyze the 'Code to Review' directly for ANY logic bugs, syntax errors, security vulnerabilities, or anti-patterns.
+    2. Also address the issues listed in 'Static Analysis Findings' (if any).
+    3. Provide a highly detailed `suggested_fix` for every issue you find.
+    The `suggested_fix` MUST use GitHub flavored markdown, include code snippets if applicable, and explain *why* the fix works.
     
-    You must return a JSON object with a single key "findings" which contains the updated list of finding objects.
+    You must return a JSON object with a single key "findings" which contains the list of finding objects.
     Example output format:
     {{
       "findings": [
