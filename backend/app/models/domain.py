@@ -1,10 +1,24 @@
+from __future__ import annotations
+
 import uuid
-from typing import Optional
 from datetime import datetime, timezone
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
-def generate_uuid():
+
+# =========================================================
+# HELPER FUNCTIONS
+# =========================================================
+
+def generate_uuid() -> str:
+    """Generate a standard string UUID4."""
     return str(uuid.uuid4())
+
+
+# =========================================================
+# USER MODELS
+# =========================================================
 
 class User(BaseModel):
     id: str = Field(default_factory=generate_uuid)
@@ -12,6 +26,11 @@ class User(BaseModel):
     password_hash: Optional[str] = None
     name: Optional[str] = None
     openai_api_key: Optional[str] = None
+
+
+# =========================================================
+# REPOSITORY & PR MODELS
+# =========================================================
 
 class Repository(BaseModel):
     id: str = Field(default_factory=generate_uuid)
@@ -25,12 +44,18 @@ class Repository(BaseModel):
     issues_count: int = 0
     prs_count: int = 0
 
+
 class PullRequest(BaseModel):
     id: str = Field(default_factory=generate_uuid)
     repo_id: str
     pr_number: str
     title: str
     status: str
+
+
+# =========================================================
+# REVIEW & FINDING MODELS
+# =========================================================
 
 class Review(BaseModel):
     id: str = Field(default_factory=generate_uuid)
@@ -39,6 +64,7 @@ class Review(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     quality_score: float = 0.0
     security_score: float = 0.0
+
 
 class Finding(BaseModel):
     id: str = Field(default_factory=generate_uuid)
@@ -50,11 +76,17 @@ class Finding(BaseModel):
     description: str
     suggested_fix: str
 
+
+# =========================================================
+# CHAT MODELS
+# =========================================================
+
 class ChatSession(BaseModel):
     id: str = Field(default_factory=generate_uuid)
     user_id: str
     repo_id: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 
 class ChatMessage(BaseModel):
     id: str = Field(default_factory=generate_uuid)

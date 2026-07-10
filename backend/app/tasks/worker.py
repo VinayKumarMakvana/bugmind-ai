@@ -1,76 +1,154 @@
-import time
-import os
-import json
-from ..services.static_analysis import aggregate_findings
-from ..services.scoring import calculate_scores
-from ..services.ast_parser import chunk_repository
-from ..services.rag import store_chunks, retrieve_context
-from ..services.ai_reviewer import generate_review
-from ..db.session import db
-from ..models.domain import Repository, Review, Finding
-import asyncio
-from ..core.config import settings
-from ..core.events import event_manager
+from __future__ import annotations
 
-def publish_event(event_type: str, data: dict):
+import asyncio
+import logging
+from typing import Any, Dict, Optional
+
+from ..core.events import event_manager
+from ..db.session import db
+from ..models.domain import Finding, Repository, Review
+from ..services.ai_reviewer import generate_review
+from ..services.ast_parser import chunk_repository
+from ..services.rag import retrieve_context, store_chunks
+from ..services.scoring import calculate_scores
+from ..services.static_analysis import aggregate_findings
+
+logger = logging.getLogger(__name__)
+
+
+# =========================================================
+# HELPER FUNCTIONS
+# =========================================================
+
+def publish_event(event_type: str, data: Dict[str, Any]) -> None:
+    """
+    Safely publish an event to the global event manager.
+    """
     try:
         event_manager.publish_sync(event_type, data)
     except Exception as e:
-        print(f"Failed to publish event: {e}")
+        logger.error("Failed to publish event: %s", e)
 
-def process_local_review(repo_id: str, local_path: str):
+
+# =========================================================
+# BACKGROUND TASKS
+# =========================================================
+
+def process_local_review(
+    repo_id: str,
+    local_path: str,
+    user_openai_api_key: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     Analyzes the uploaded repository directly from the local file system.
     Runs in a background thread via FastAPI BackgroundTasks.
     """
-    print(f"Starting review for local Repo {repo_id} at {local_path}")
-    publish_event("review_started", {"repo_id": repo_id, "status": "Initializing local analysis..."})
+
+    logger.info("Starting review for local Repo %s at %s", repo_id, local_path)
+
+    publish_event(
+        "review_started",
+        {"repo_id": repo_id, "status": "Initializing local analysis..."}
+    )
     
-    publish_event("review_progress", {"repo_id": repo_id, "status": "Parsing AST and generating embeddings..."})
+    # ==========================================
+    # 1. Parsing AST and Generating Embeddings
+    # ==========================================
+    publish_event(
+        "review_progress",
+        {"repo_id": repo_id, "status": "Parsing AST and generating embeddings..."}
+    )
     
-    # Extract Context and Update RAG Store
     chunks = chunk_repository(local_path)
     store_chunks(repo_id, chunks)
     
-    publish_event("review_progress", {"repo_id": repo_id, "status": "Running static analysis engines..."})
+    # ==========================================
+    # 2. Running Static Analysis Engines
+    # ==========================================
+    publish_event(
+        "review_progress",
+        {"repo_id": repo_id, "status": "Running static analysis engines..."}
+    )
     
-    # Run Unified Findings Engine
     findings = aggregate_findings(local_path)
+
+    # Convert to expected format for AI reviewer
+    formatted_findings = []
+    for idx, f in enumerate(findings):
+        formatted_findings.append({
+            "id": str(idx),
+            "file": f.get("file", ""),
+            "line": f.get("line", 0),
+            "description": f.get("message", ""),
+            "severity": f.get("severity", "LOW"),
+        })
     
-    publish_event("review_progress", {"repo_id": repo_id, "status": "Consulting AI Copilot..."})
+    # ==========================================
+    # 3. Consulting AI Copilot
+    # ==========================================
+    publish_event(
+        "review_progress",
+        {"repo_id": repo_id, "status": "Consulting AI Copilot..."}
+    )
     
-    # Contextual AI Review Pipeline
-    query = findings[0]["description"] if findings else "security vulnerabilities and best practices"
+    query = formatted_findings[0]["description"] if formatted_findings else "security vulnerabilities and best practices"
     context = retrieve_context(repo_id, query)
     context_text = [context] if context else []
     
-    enriched_findings = generate_review("Local workspace review", findings, context_text)
+    review = generate_review(
+        pr_diff="Local workspace review",
+        findings=formatted_findings,
+        context_chunks=context_text,
+        user_openai_api_key=user_openai_api_key,
+    )
+
+    enriched_findings = review.get("findings", [])
     
-    # Calculate Scores (Using enriched findings)
+    # ==========================================
+    # 4. Calculate Scores
+    # ==========================================
     quality_score, security_score = calculate_scores(enriched_findings)
     
-    # Save to Database
-    async def save_to_db():
+    # ==========================================
+    # 5. Save to Database (Async Context)
+    # ==========================================
+    async def save_to_db() -> None:
         repo = await db.repositories.find_one({"id": repo_id})
+        
         if not repo:
-            print(f"Repo {repo_id} not found in DB")
+            logger.error("Repo %s not found in DB", repo_id)
             return
             
-        new_review = Review(pr_id="local", commit_sha="local", quality_score=quality_score, security_score=security_score)
+        new_review = Review(
+            pr_id="local",
+            commit_sha="local",
+            quality_score=quality_score,
+            security_score=security_score,
+        )
+        
         review_dict = new_review.model_dump()
-        review_dict["repo_id"] = repo_id # Add it since dashboard expects it
+        review_dict["repo_id"] = repo_id
+        
         await db.reviews.insert_one(review_dict)
         
-        for finding_data in enriched_findings:
+        for issue in enriched_findings:
+            title = issue.get("title", "")
+            description = (
+                f"**Why:** {issue.get('why', '')}\n\n"
+                f"**Fix:** {issue.get('fix', '')}\n\n"
+                f"**Example:**\n```\n{issue.get('example', '')}\n```"
+            )
+
             new_finding = Finding(
                 review_id=review_dict["id"],
-                file_path=finding_data.get("file_path", ""),
-                line_number=finding_data.get("line_number", 0),
-                type="security" if "security" in str(finding_data.get("description", "")).lower() else "smell",
-                severity=finding_data.get("severity", "low"),
-                description=finding_data.get("description", ""),
-                suggested_fix=finding_data.get("suggested_fix", "Review and update.")
+                file_path=issue.get("file", ""),
+                line_number=issue.get("line", 0),
+                type="security" if "security" in title.lower() else "smell",
+                severity=issue.get("severity", "LOW"),
+                description=title,
+                suggested_fix=description,
             )
+
             await db.findings.insert_one(new_finding.model_dump())
             
         # Cache score and issue count on Repository document to fix N+1 query problem
@@ -78,20 +156,27 @@ def process_local_review(repo_id: str, local_path: str):
             {"id": repo_id},
             {"$set": {
                 "latest_score": quality_score,
-                "issues_count": len(enriched_findings)
+                "issues_count": len(enriched_findings),
             }}
         )
             
-    # We must run this async function since process_local_review is synchronous
-    # but asyncio.run might fail if we are already in an event loop.
-    # Since it's run via BackgroundTasks (in a threadpool), asyncio.run is safe.
+    # Execute async db save safely in thread
     try:
         asyncio.run(save_to_db())
     except RuntimeError:
-        # If somehow there's an existing loop in this thread
         loop = asyncio.get_event_loop()
         loop.run_until_complete(save_to_db())
     
-    publish_event("review_completed", {"repo_id": repo_id, "findings_count": len(enriched_findings)})
-    print(f"Completed local review for {repo_id}.")
-    return {"status": "success", "repo_id": repo_id, "findings_count": len(enriched_findings)}
+    publish_event(
+        "review_completed",
+        {"repo_id": repo_id, "findings_count": len(enriched_findings)}
+    )
+
+    logger.info("Completed local review for %s.", repo_id)
+
+    return {
+        "status": "success",
+        "repo_id": repo_id,
+        "findings_count": len(enriched_findings),
+    }
+

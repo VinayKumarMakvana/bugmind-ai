@@ -1,31 +1,141 @@
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
+
 import bcrypt
 import jwt
-from datetime import datetime, timedelta
-import os
-SECRET_KEY = os.getenv("JWT_SECRET", "super-secret-key-change-in-production")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # 7 days
+
+from .config import settings
+
+
+# =========================================================
+# PASSWORD HASHING
+# =========================================================
 
 def get_password_hash(password: str) -> str:
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+    """
+    Hash password using bcrypt.
+    """
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return bcrypt.hashpw(
+        password.encode("utf-8"),
+        bcrypt.gensalt(),
+    ).decode("utf-8")
+
+
+# =========================================================
+# PASSWORD VERIFY
+# =========================================================
+
+def verify_password(
+    plain_password: str,
+    hashed_password: str,
+) -> bool:
+    """
+    Verify bcrypt password.
+    """
+
     try:
-        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8"),
+            hashed_password.encode("utf-8"),
+        )
+
     except Exception:
+
         return False
 
-def create_access_token(data: dict) -> str:
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
 
-def decode_access_token(token: str) -> dict | None:
+# =========================================================
+# CREATE JWT
+# =========================================================
+
+def create_access_token(
+    data: dict,
+    expires_delta: timedelta | None = None,
+) -> str:
+    """
+    Generate JWT access token.
+    """
+
+    payload = data.copy()
+
+    expire = datetime.now(
+        timezone.utc
+    ) + (
+        expires_delta
+        or timedelta(
+            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+        )
+    )
+
+    payload.update(
+        {
+            "exp": expire,
+            "iat": datetime.now(timezone.utc),
+        }
+    )
+
+    return jwt.encode(
+        payload,
+        settings.SECRET_KEY,
+        algorithm=settings.ALGORITHM,
+    )
+
+
+# =========================================================
+# DECODE JWT
+# =========================================================
+
+def decode_access_token(
+    token: str,
+) -> dict | None:
+    """
+    Decode JWT.
+    """
+
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload
-    except jwt.PyJWTError:
+
+        return jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[
+                settings.ALGORITHM
+            ],
+        )
+
+    except (
+        jwt.ExpiredSignatureError,
+        jwt.InvalidTokenError,
+        jwt.DecodeError,
+    ):
+
         return None
+
+
+# =========================================================
+# TOKEN VALIDATION
+# =========================================================
+
+def is_token_valid(
+    token: str,
+) -> bool:
+    """
+    Check whether token is valid.
+    """
+
+    return decode_access_token(token) is not None
+
+
+# =========================================================
+# EXPORTS
+# =========================================================
+
+__all__ = [
+    "get_password_hash",
+    "verify_password",
+    "create_access_token",
+    "decode_access_token",
+    "is_token_valid",
+]

@@ -1,79 +1,831 @@
-import os
+"""
+=========================================================
+BugMind AI - AI Reviewer Service
+
+Responsibilities
+----------------
+1. Build AI review prompt
+2. Send request to OpenAI
+3. Parse AI response
+4. Return structured JSON
+
+Author : Vinay
+=========================================================
+"""
+
+from __future__ import annotations
+
 import json
+import logging
+from typing import Any, Dict, List, Optional
+
+# pyrefly: ignore [missing-import]
 from openai import OpenAI
+
 from ..core.config import settings
 
-def generate_review(pr_diff: str, findings: list, context_chunks: list, user_openai_api_key: str = None):
-    """Use an LLM to generate a review based on the diff, static findings, and RAG context."""
-    
-    # Use user's personal key if available, otherwise fallback to system key
-    api_key = user_openai_api_key or settings.OPENAI_API_KEY
-    client = OpenAI(api_key=api_key) if api_key else None
-    
-    if not client:
-        print("OPENAI_API_KEY not set. Mocking AI Review.")
-        enriched_findings = []
-        for f in findings:
-            f_copy = dict(f)
-            f_copy["suggested_fix"] = f"**[Mock AI Review]** Detected `{f['description']}`. In the context of your codebase, this should be addressed immediately."
-            enriched_findings.append(f_copy)
-        return enriched_findings
 
-    system_prompt = (
-        "You are BugMind AI, an elite Senior Staff Software Engineer and Security Specialist. "
-        "Your code reviews are legendary for their insight, precision, and actionable advice. "
-        "You always consider the broader codebase context."
-    )
-    
-    prompt = f"""
-    Please review the following code.
-    
-    # Static Analysis Findings
-    {json.dumps(findings, indent=2)}
-    
-    # Relevant Code Context (RAG)
-    {chr(10).join(context_chunks)}
-    
-    # Code to Review
-    {pr_diff}
-    
-    Task: 
-    1. Analyze the 'Code to Review' directly for ANY logic bugs, syntax errors, security vulnerabilities, or anti-patterns.
-    2. Also address the issues listed in 'Static Analysis Findings' (if any).
-    3. Provide a highly detailed `suggested_fix` for every issue you find.
-    The `suggested_fix` MUST use GitHub flavored markdown, include code snippets if applicable, and explain *why* the fix works.
-    
-    You must return a JSON object with a single key "findings" which contains the list of finding objects.
-    Example output format:
-    {{
-      "findings": [
-        {{
-          "id": "...",
-          "file": "...",
-          "line": 10,
-          "description": "...",
-          "severity": "...",
-          "suggested_fix": "Markdown formatted explanation and fix..."
-        }}
-      ]
-    }}
+# =========================================================
+# LOGGER
+# =========================================================
+
+logger = logging.getLogger(__name__)
+
+
+# =========================================================
+# MODEL CONFIGURATION
+# =========================================================
+
+MODEL_NAME = getattr(settings, "OPENAI_MODEL", "gpt-4.1")
+
+TEMPERATURE = 0.2
+
+MAX_CODE_LENGTH = 50000
+
+MAX_CONTEXT_LENGTH = 20000
+
+
+# =========================================================
+# DEFAULT RESPONSE
+# =========================================================
+
+DEFAULT_RESPONSE = {
+    "summary": {
+        "total_issues": 0,
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "confidence": 0
+    },
+    "changes": [],
+    "findings": [],
+    "corrected_code": "",
+    "review_markdown": ""
+}
+
+
+# =========================================================
+# CREATE OPENAI CLIENT
+# =========================================================
+
+def create_client(
+    user_api_key: Optional[str] = None
+) -> Optional[OpenAI]:
     """
-    
+    Returns an authenticated OpenAI client.
+    """
+
+    api_key = user_api_key or settings.OPENAI_API_KEY
+
+    if not api_key:
+        logger.warning("OpenAI API key not configured.")
+        return None
+
+    return OpenAI(api_key=api_key)
+
+
+# =========================================================
+# SAFE TRUNCATE
+# =========================================================
+
+def truncate_text(
+    text: str,
+    limit: int
+) -> str:
+
+    if not text:
+        return ""
+
+    if len(text) <= limit:
+        return text
+
+    logger.warning("Input truncated because it exceeded limit.")
+
+    return text[:limit]
+
+
+# =========================================================
+# FORMAT STATIC FINDINGS
+# =========================================================
+
+def format_findings(
+    findings: List[Dict[str, Any]]
+) -> str:
+
+    if not findings:
+        return "No static analysis findings."
+
+    return json.dumps(
+        findings,
+        indent=2,
+        ensure_ascii=False
+    )
+
+
+# =========================================================
+# FORMAT RAG CONTEXT
+# =========================================================
+
+def format_context(
+    context_chunks: List[str]
+) -> str:
+
+    if not context_chunks:
+        return "No additional project context."
+
+    context = "\n\n".join(context_chunks)
+
+    return truncate_text(
+        context,
+        MAX_CONTEXT_LENGTH
+    )
+
+
+# =========================================================
+# EMPTY RESPONSE
+# =========================================================
+
+def empty_response() -> Dict[str, Any]:
+    """
+    Return an empty response structure.
+    """
+
+    return json.loads(json.dumps(DEFAULT_RESPONSE))
+
+# =========================================================
+# SYSTEM PROMPT
+# =========================================================
+
+SYSTEM_PROMPT = """
+You are BugMind AI.
+
+You are an expert Senior Software Engineer,
+Security Engineer,
+Performance Engineer,
+and Code Reviewer.
+
+Your task is to review the provided source code.
+
+Your responsibilities:
+
+1. Find syntax errors.
+2. Find logical bugs.
+3. Find runtime issues.
+4. Find security vulnerabilities.
+5. Find performance problems.
+6. Find code smells.
+7. Find best practice violations.
+8. Find memory/resource leaks.
+9. Find scalability problems.
+
+For every issue provide:
+
+- title
+- severity
+- category
+- description
+- why it is a problem
+- how to fix it
+- example solution
+
+After reviewing the code:
+
+Generate a corrected version of the code.
+
+Rules:
+
+• Never invent issues.
+
+• Never remove business logic.
+
+• Preserve original functionality.
+
+• Improve readability.
+
+• Improve performance.
+
+• Improve security.
+
+Return ONLY valid JSON.
+"""
+
+
+# =========================================================
+# JSON OUTPUT FORMAT
+# =========================================================
+
+OUTPUT_SCHEMA = """
+{
+  "summary":{
+      "total_issues":0,
+      "critical":0,
+      "high":0,
+      "medium":0,
+      "low":0,
+      "confidence":100
+  },
+
+  "changes":[
+      "Added null checks",
+      "Removed SQL Injection",
+      "Improved exception handling"
+  ],
+
+  "findings":[
+      {
+          "title":"",
+          "severity":"",
+          "category":"",
+          "description":"",
+          "why":"",
+          "fix":"",
+          "example":""
+      }
+  ],
+
+  "corrected_code":"",
+
+  "review_markdown":""
+}
+"""
+
+
+# =========================================================
+# BUILD AI PROMPT
+# =========================================================
+
+def build_prompt(
+    source_code: str,
+    findings: List[Dict[str, Any]],
+    context_chunks: List[str]
+) -> str:
+    """
+    Build the final prompt that will be sent to OpenAI.
+    """
+
+    source_code = truncate_text(
+        source_code,
+        MAX_CODE_LENGTH
+    )
+
+    static_findings = format_findings(
+        findings
+    )
+
+    rag_context = format_context(
+        context_chunks
+    )
+
+    prompt = f"""
+==========================
+STATIC ANALYSIS
+==========================
+
+{static_findings}
+
+
+==========================
+PROJECT CONTEXT
+==========================
+
+{rag_context}
+
+
+==========================
+SOURCE CODE
+==========================
+
+{source_code}
+
+
+==========================
+YOUR TASK
+==========================
+
+Review this code.
+
+Check for:
+
+- Syntax Errors
+
+- Logic Bugs
+
+- Runtime Errors
+
+- Security Vulnerabilities
+
+- Performance Problems
+
+- Best Practices
+
+- Clean Code
+
+- Scalability
+
+- Maintainability
+
+
+For every issue explain:
+
+1. What is wrong?
+
+2. Why is it wrong?
+
+3. How to fix it?
+
+4. Show a small example.
+
+Then generate a fully corrected version of the code.
+
+Finally generate a markdown report.
+
+Return ONLY valid JSON.
+
+Output format:
+
+{OUTPUT_SCHEMA}
+"""
+
+    return prompt
+
+# =========================================================
+# CALL OPENAI REVIEW ENGINE
+# =========================================================
+
+def call_ai(
+    source_code: str,
+    findings: List[Dict[str, Any]],
+    context_chunks: List[str],
+    user_openai_api_key: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Send the review request to OpenAI and return parsed JSON.
+    """
+
+    client = create_client(user_openai_api_key)
+
+    if client is None:
+        logger.warning("Using default response because API key is missing.")
+        return empty_response()
+
+    prompt = build_prompt(
+        source_code=source_code,
+        findings=findings,
+        context_chunks=context_chunks,
+    )
+
     try:
+
         response = client.chat.completions.create(
-            model="gpt-4o",
+
+            model=MODEL_NAME,
+
+            temperature=TEMPERATURE,
+
+            response_format={
+                "type": "json_object"
+            },
+
             messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
-            ],
-            response_format={ "type": "json_object" },
-            temperature=0.2
+                {
+                    "role": "system",
+                    "content": SYSTEM_PROMPT
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
         )
+
         content = response.choices[0].message.content
+
+        if not content:
+            raise ValueError("Empty response received from OpenAI.")
+
         parsed = json.loads(content)
-        if isinstance(parsed, dict) and "findings" in parsed:
-            return parsed["findings"]
-        return findings
-    except Exception as e:
-        print(f"LLM Generation failed: {e}")
-        return findings
+
+        return parsed
+
+    except json.JSONDecodeError:
+
+        logger.exception("Invalid JSON received from AI.")
+
+        return {
+            **empty_response(),
+            "review_markdown":
+                "AI returned an invalid JSON response."
+        }
+
+    except Exception as ex:
+
+        logger.exception("AI Review Failed")
+
+        return {
+            **empty_response(),
+            "review_markdown":
+                f"AI Review Failed\n\n{str(ex)}"
+        }
+
+
+# =========================================================
+# VALIDATE AI RESPONSE
+# =========================================================
+
+def validate_response(
+    response: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Ensure all required keys exist.
+    """
+
+    result = empty_response()
+
+    if not isinstance(response, dict):
+        return result
+
+    result["summary"] = response.get(
+        "summary",
+        result["summary"]
+    )
+
+    result["changes"] = response.get(
+        "changes",
+        []
+    )
+
+    result["findings"] = response.get(
+        "findings",
+        []
+    )
+
+    result["corrected_code"] = response.get(
+        "corrected_code",
+        ""
+    )
+
+    result["review_markdown"] = response.get(
+        "review_markdown",
+        ""
+    )
+
+    return result
+
+# =========================================================
+# RETRY CONFIGURATION
+# =========================================================
+
+MAX_RETRIES = 3
+
+
+# =========================================================
+# CALL OPENAI WITH RETRY
+# =========================================================
+
+def get_ai_review(
+    source_code: str,
+    findings: List[Dict[str, Any]],
+    context_chunks: List[str],
+    user_openai_api_key: Optional[str] = None,
+) -> Dict[str, Any]:
+
+    last_error = None
+
+    for attempt in range(1, MAX_RETRIES + 1):
+
+        logger.info(f"AI Review Attempt {attempt}/{MAX_RETRIES}")
+
+        response = call_ai(
+            source_code=source_code,
+            findings=findings,
+            context_chunks=context_chunks,
+            user_openai_api_key=user_openai_api_key,
+        )
+
+        if response.get("findings") or response.get("corrected_code"):
+            return validate_response(response)
+
+        last_error = response
+
+    logger.error("Maximum retry limit reached.")
+
+    return last_error or empty_response()
+
+
+# =========================================================
+# BUILD MARKDOWN REPORT
+# =========================================================
+
+def build_markdown_report(
+    review: Dict[str, Any]
+) -> str:
+
+    summary = review.get("summary", {})
+
+    findings = review.get("findings", [])
+
+    markdown = "# BugMind AI Review Report\n\n"
+
+    markdown += "## Summary\n\n"
+
+    markdown += f"- Total Issues : {summary.get('total_issues',0)}\n"
+
+    markdown += f"- Critical : {summary.get('critical',0)}\n"
+
+    markdown += f"- High : {summary.get('high',0)}\n"
+
+    markdown += f"- Medium : {summary.get('medium',0)}\n"
+
+    markdown += f"- Low : {summary.get('low',0)}\n"
+
+    markdown += f"- Confidence : {summary.get('confidence',0)}%\n\n"
+
+    markdown += "---\n\n"
+
+    markdown += "## Findings\n\n"
+
+    if not findings:
+
+        markdown += "No issues detected.\n"
+
+        return markdown
+
+    for index, issue in enumerate(findings, start=1):
+
+        markdown += f"### {index}. {issue.get('title','Unknown')}\n\n"
+
+        markdown += f"**Severity:** {issue.get('severity','INFO')}\n\n"
+
+        markdown += f"**Category:** {issue.get('category','General')}\n\n"
+
+        markdown += f"**Description**\n\n{issue.get('description','')}\n\n"
+
+        markdown += f"**Why**\n\n{issue.get('why','')}\n\n"
+
+        markdown += f"**Fix**\n\n{issue.get('fix','')}\n\n"
+
+        markdown += f"**Example**\n\n```text\n{issue.get('example','')}\n```\n\n"
+
+        markdown += "---\n\n"
+
+    return markdown
+
+
+# =========================================================
+# FINALIZE REVIEW
+# =========================================================
+
+def finalize_review(
+    review: Dict[str, Any]
+) -> Dict[str, Any]:
+
+    review = validate_response(review)
+
+    review["review_markdown"] = build_markdown_report(review)
+
+    return review
+
+# =========================================================
+# MAIN REVIEW FUNCTION
+# =========================================================
+
+def generate_review(
+    pr_diff: str,
+    findings: List[Dict[str, Any]],
+    context_chunks: List[str],
+    user_openai_api_key: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Main entry point for BugMind AI Review Engine.
+
+    Parameters
+    ----------
+    pr_diff : str
+        Source code or Pull Request diff.
+
+    findings : list
+        Static analysis findings.
+
+    context_chunks : list
+        RAG context.
+
+    user_openai_api_key : str
+        Optional user API key.
+
+    Returns
+    -------
+    dict
+        AI Review Result
+    """
+
+    logger.info("=" * 60)
+    logger.info("Starting BugMind AI Review")
+    logger.info("=" * 60)
+
+    if not pr_diff.strip():
+
+        logger.warning("Empty source code received.")
+
+        response = empty_response()
+
+        response["review_markdown"] = (
+            "# BugMind AI\n\n"
+            "No source code was provided."
+        )
+
+        return response
+
+    try:
+
+        review = get_ai_review(
+            source_code=pr_diff,
+            findings=findings,
+            context_chunks=context_chunks,
+            user_openai_api_key=user_openai_api_key,
+        )
+
+        review = finalize_review(review)
+
+        logger.info(
+            "AI Review Completed Successfully."
+        )
+
+        return review
+
+    except Exception as ex:
+
+        logger.exception("Unexpected Error")
+
+        response = empty_response()
+
+        response["review_markdown"] = (
+            "# BugMind AI\n\n"
+            f"Unexpected Error\n\n{str(ex)}"
+        )
+
+        return response
+
+
+# =========================================================
+# SIMPLE REVIEW SUMMARY
+# =========================================================
+
+def get_review_summary(
+    review: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Returns only summary information.
+    """
+
+    return review.get(
+        "summary",
+        {}
+    )
+
+
+# =========================================================
+# GET FINDINGS
+# =========================================================
+
+def get_findings(
+    review: Dict[str, Any]
+):
+
+    return review.get(
+        "findings",
+        []
+    )
+
+
+# =========================================================
+# GET CORRECTED CODE
+# =========================================================
+
+def get_corrected_code(
+    review: Dict[str, Any]
+) -> str:
+
+    return review.get(
+        "corrected_code",
+        ""
+    )
+
+
+# =========================================================
+# GET MARKDOWN REPORT
+# =========================================================
+
+def get_markdown_report(
+    review: Dict[str, Any]
+) -> str:
+
+    return review.get(
+        "review_markdown",
+        ""
+    )
+
+# =========================================================
+# NORMALIZE REVIEW RESPONSE
+# =========================================================
+
+def normalize_review(review: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Ensure response always contains expected keys.
+    """
+
+    review = validate_response(review)
+
+    summary = review.get("summary", {})
+
+    defaults = {
+        "total_issues": 0,
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "confidence": 100
+    }
+
+    for key, value in defaults.items():
+        summary.setdefault(key, value)
+
+    review["summary"] = summary
+
+    review.setdefault("changes", [])
+    review.setdefault("findings", [])
+    review.setdefault("corrected_code", "")
+    review.setdefault("review_markdown", "")
+
+    return review
+
+
+# =========================================================
+# REVIEW STATUS
+# =========================================================
+
+def get_review_status(review: Dict[str, Any]) -> str:
+
+    summary = review.get("summary", {})
+
+    if summary.get("critical", 0) > 0:
+        return "FAILED"
+
+    if summary.get("high", 0) > 0:
+        return "WARNING"
+
+    return "PASSED"
+
+
+# =========================================================
+# QUALITY SCORE
+# =========================================================
+
+def calculate_quality_score(review: Dict[str, Any]) -> int:
+
+    summary = review.get("summary", {})
+
+    score = 100
+
+    score -= summary.get("critical", 0) * 25
+    score -= summary.get("high", 0) * 15
+    score -= summary.get("medium", 0) * 8
+    score -= summary.get("low", 0) * 3
+
+    return max(score, 0)
+
+
+# =========================================================
+# ENRICH RESPONSE
+# =========================================================
+
+def enrich_review(review: Dict[str, Any]) -> Dict[str, Any]:
+
+    review = normalize_review(review)
+
+    review["status"] = get_review_status(review)
+
+    review["quality_score"] = calculate_quality_score(review)
+
+    return review
+
+
+# =========================================================
+# EXPORTS
+# =========================================================
+
+__all__ = [
+
+    "generate_review",
+
+    "get_review_summary",
+
+    "get_findings",
+
+    "get_corrected_code",
+
+    "get_markdown_report",
+
+    "enrich_review",
+
+]
