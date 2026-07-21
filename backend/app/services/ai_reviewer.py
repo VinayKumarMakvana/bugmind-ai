@@ -367,7 +367,21 @@ def call_ai(
 
     if client is None:
         logger.warning("Using default response because API key is missing.")
-        return empty_response()
+        error_response = empty_response()
+        error_response["summary"]["total_issues"] = 1
+        error_response["summary"]["critical"] = 1
+        error_response["findings"] = [
+            {
+                "title": "OpenAI API Key Missing",
+                "severity": "CRITICAL",
+                "category": "Configuration",
+                "description": "BugMind AI requires an OpenAI API key to analyze your code, but none was found.",
+                "why": "Without the API key, the AI cannot process the code snippet to find logical errors or provide solutions.",
+                "fix": "Add your `OPENAI_API_KEY` to your server's Environment Variables (e.g., in Render dashboard or local `.env` file).",
+                "example": "OPENAI_API_KEY=sk-your-key-here"
+            }
+        ]
+        return error_response
 
     prompt = build_prompt(
         source_code=source_code,

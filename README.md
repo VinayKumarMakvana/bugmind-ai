@@ -1,24 +1,26 @@
-# Bugmind AI - AI-Powered Android Bug Report Triaging
+# BugMind AI - AI-Powered Code Analysis & Web IDE
 
-Bugmind AI is an intelligent bug report analysis and triaging system built for Android projects. It uses cutting-edge AI models to automatically analyze bug reports, identify root causes, group similar issues, and provide actionable insights to development teams.
+BugMind AI is an intelligent codebase analysis platform and web-based IDE that helps developers identify, triage, and fix bugs instantly. It uses cutting-edge AI models combined with powerful static analysis tools to understand context, identify issues, and provide actionable, context-aware suggestions directly within the browser.
 
 ## Features
 
-- 🤖 **AI-Powered Bug Analysis** - Uses advanced NLP models to understand bug descriptions, symptoms, and system information
-- 🏷️ **Automatic Tagging** - Automatically extracts relevant tags such as component, severity, OS version, device type, etc.
-- 🧩 **Root Cause Identification** - Analyzes crash stacks, logs, and user reports to suggest likely root causes
-- 🔍 **Duplicate Detection** - Identifies similar and duplicate bug reports using semantic similarity
-- 👥 **Team Assignment** - Suggests the most appropriate team member to handle the bug based on expertise
-- 📊 **Intelligent Dashboard** - Visualizes bug trends, common issues, and team workload
-- 📝 **Smart Suggestions** - Provides actionable recommendations for bug fixes and improvements
+- 🤖 **Real-time AI Code Review** - Uses advanced OpenAI models to automatically review code, identify issues, and suggest precise corrections.
+- 💻 **Monaco Web IDE** - A robust built-in code editor in the browser (powered by the same engine as VS Code) to view and edit code with real-time AI assistance.
+- 🔍 **Static Analysis Integration** - Runs traditional static analysis tools (Semgrep, Bandit, Pylint) for deep security and code quality checks.
+- 🧠 **Context-Aware RAG (Retrieval-Augmented Generation)** - Utilizes ChromaDB to ingest repositories, allowing the AI to understand the full context of your entire codebase.
+- 💬 **AI Chat Assistant** - Interact with a conversational AI that can explain code, answer questions, and provide guidance based on your specific project.
+- 🔗 **Repository & Webhook Management** - Connect code repositories and trigger automated analysis via webhooks seamlessly.
+- 📊 **Intelligent Dashboard** - View analysis results, code scores, and overall metrics in a sleek, modern UI.
+- 🧩 **AST Parsing & Execution** - Deeply parses code structures for semantic understanding and executes precise analysis.
+- 🔒 **Secure & Native** - Your code is processed securely with robust JWT authentication and entirely in-memory processing.
 
 ## Technology Stack
 
-- **Frontend**: Next.js, React, TailwindCSS (or similar UI library)
-- **Backend**: Python, FastAPI, Uvicorn
-- **AI/ML**: Hugging Face Transformers, spaCy, Scikit-learn
-- **Database**: MongoDB
-- **Authentication**: JWT
+- **Frontend**: Next.js (App Router), React, TailwindCSS, Framer Motion, Monaco Editor, React Markdown
+- **Backend**: Python, FastAPI, Uvicorn, Motor (async MongoDB), Pydantic
+- **AI/ML**: OpenAI, LangChain, ChromaDB
+- **Static Analysis**: Semgrep, Bandit, Pylint
+- **Authentication**: JWT, bcrypt
 - **Containerization**: Docker, Docker Compose
 
 ## Getting Started
@@ -26,8 +28,8 @@ Bugmind AI is an intelligent bug report analysis and triaging system built for A
 ### Prerequisites
 
 - Python 3.8+
-- Node.js 14+
-- MongoDB (or Docker)
+- Node.js 18+
+- MongoDB
 - Git
 
 ### Installation
@@ -63,6 +65,8 @@ docker-compose up --build
 1. **Backend Setup**:
 ```bash
 cd backend
+python -m venv venv
+venv\Scripts\activate  # On Windows
 pip install -r requirements.txt
 ```
 
@@ -78,6 +82,7 @@ npm install
    ```env
    MONGO_URI=mongodb://localhost:27017/bugmind
    JWT_SECRET=your_secret_key
+   OPENAI_API_KEY=your_openai_key
    ```
 
 4. **Run the Application**:
@@ -95,52 +100,22 @@ npm install
 ## Usage
 
 ### 1. User Authentication
+- Register a new account securely.
+- Login with your credentials to access the Dashboard and Editor.
 
-- Register a new account
-- Login with your credentials
-- System automatically assigns roles based on your profile
+### 2. Using the Web IDE
+- Navigate to the "Editor" to launch the Web IDE.
+- Paste or write your code directly in the browser.
+- Get real-time AI code analysis, error detection, and suggested fixes streamed directly to your screen.
 
-### 2. Submitting Bug Reports
+### 3. Repository Analysis
+- Go to the Dashboard and link your repository or upload code.
+- BugMind AI uses its static analysis engine (Semgrep, Bandit, Pylint) and AI models to comprehensively review the code.
+- View structured summaries, severity levels, and deep insights.
 
-- Navigate to the "Submit Bug" page
-- Fill in bug details:
-  - Title
-  - Description
-  - Steps to reproduce
-  - Actual results
-  - Expected results
-  - Device information
-  - Android version
-  - App version
-  - Screenshots/Logs (optional)
-- Click "Submit"
-
-### 3. Analyzing Bug Reports
-
-After submission, the AI engine automatically analyzes the bug:
-- **Tags**: Automatically extracted and categorized
-- **Root Cause**: Suggested based on analysis
-- **Similarity**: Checks for duplicate issues
-- **Team Assignment**: Assigned to appropriate team member
-- **Severity**: Estimated based on impact
-
-### 4. Dashboard Overview
-
-The dashboard provides:
-- Total bug count
-- Bug distribution by status, priority, team
-- Recent bug reports
-- AI-generated insights
-- Team workload visualization
-- Common issues and trends
-
-### 5. Managing Bugs
-
-- View detailed bug reports with AI analysis
-- Add comments and updates
-- Mark bugs as resolved, verified, or closed
-- Track resolution progress
-- Link related bugs
+### 4. Interactive AI Chat
+- Use the built-in AI Chat interface to ask codebase-specific questions.
+- The ChromaDB-powered RAG system ensures answers are highly relevant to your uploaded projects.
 
 ## Project Structure
 
@@ -148,74 +123,23 @@ The dashboard provides:
 bugmind-ai/
 ├── backend/              # Python FastAPI backend
 │   ├── app/
-│   │   ├── api/          # API endpoints
-│   │   ├── services/     # Business logic
-│   │   ├── models/       # Database models
-│   │   └── ai/           # AI analysis modules
+│   │   ├── api/          # API routes (auth, analyze, chat, repos, webhooks)
+│   │   ├── services/     # Core logic (AI Reviewer, RAG, Static Analysis)
+│   │   ├── models/       # Pydantic & MongoDB models
+│   │   └── core/         # Config and Events
 │   ├── requirements.txt
 │   └── .env
-├── frontend/             # React frontend
+├── frontend/             # Next.js React frontend
 │   ├── src/
-│   │   ├── components/   # UI components
-│   │   ├── pages/        # Page components
-│   │   ├── services/     # API services
-│   │   └── assets/       # Static assets
+│   │   ├── app/          # App Router (dashboard, editor, login, settings)
+│   │   ├── components/   # Reusable UI components
+│   │   └── lib/          # Utilities and configurations
 │   ├── package.json
-│   └── .env
-├── docker-compose.yml    # Docker setup
+│   └── .env.local
+├── start.bat             # Quickstart script for Windows
 └── README.md
 ```
 
-## AI Model Integration
-
-The system uses the following AI models:
-
-1. **Text Classification** - Classify bug severity and category
-2. **Named Entity Recognition** - Extract entities like device, OS version, component
-3. **Semantic Similarity** - Find duplicate bug reports
-4. **Summarization** - Generate concise bug summaries
-5. **Root Cause Analysis** - Identify likely causes from logs and descriptions
-
-## Customization
-
-### Environment Variables
-
-Create a `.env` file in the `backend` and `frontend` directories:
-
-**Backend (.env)**:
-```env
-MONGO_URI=mongodb://localhost:27017/bugmind
-JWT_SECRET=your_secure_secret
-OPENAI_API_KEY=your_openai_key (optional)
-HUGGINGFACE_API_KEY=your_hf_key (optional)
-```
-
-**Frontend (.env)**:
-```env
-REACT_APP_API_URL=http://localhost:8000
-```
-
-### Adding Custom AI Models
-
-To use custom models:
-1. Add model files to the `backend/app/ai/models/` directory
-2. Update `backend/app/ai/analyzer.py` to use your models
-3. Retrain if necessary and update model paths
-
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create a new branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## Support
-
-For issues, questions, or feature requests, please open an issue in the repository.
+This project is licensed under the MIT License.
