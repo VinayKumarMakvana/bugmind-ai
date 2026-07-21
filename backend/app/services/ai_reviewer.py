@@ -422,25 +422,37 @@ def call_ai(
 
         return parsed
 
-    except json.JSONDecodeError:
-
+    except json.JSONDecodeError as ex:
         logger.exception("Invalid JSON received from AI.")
-
-        return {
-            **empty_response(),
-            "review_markdown":
-                "AI returned an invalid JSON response."
-        }
+        error_response = empty_response()
+        error_response["summary"]["total_issues"] = 1
+        error_response["summary"]["critical"] = 1
+        error_response["findings"] = [{
+            "title": "AI Review Failed (Invalid JSON)",
+            "severity": "CRITICAL",
+            "category": "System Error",
+            "description": f"The AI returned an invalid response format.\n\nError details:\n{str(ex)}",
+            "why": "The response from OpenAI could not be parsed.",
+            "fix": "Try running the analysis again.",
+            "example": ""
+        }]
+        return error_response
 
     except Exception as ex:
-
         logger.exception("AI Review Failed")
-
-        return {
-            **empty_response(),
-            "review_markdown":
-                f"AI Review Failed\n\n{str(ex)}"
-        }
+        error_response = empty_response()
+        error_response["summary"]["total_issues"] = 1
+        error_response["summary"]["critical"] = 1
+        error_response["findings"] = [{
+            "title": "AI Review Failed (OpenAI Error)",
+            "severity": "CRITICAL",
+            "category": "System Error",
+            "description": f"The AI analysis failed due to an error from OpenAI.\n\nError details:\n{str(ex)}",
+            "why": "This usually happens if your OpenAI API key is invalid, expired, or out of credits.",
+            "fix": "Check your OpenAI API key on https://platform.openai.com and ensure it has billing/credits enabled.",
+            "example": ""
+        }]
+        return error_response
 
 
 # =========================================================
