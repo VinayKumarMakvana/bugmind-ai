@@ -50,7 +50,7 @@ class Settings(BaseSettings):
 
     OPENAI_API_KEY: str = ""
 
-    OPENAI_MODEL: str = "gpt-4.1"
+    OPENAI_MODEL: str = "gpt-3.5-turbo"
 
     OPENAI_TEMPERATURE: float = 0.2
 

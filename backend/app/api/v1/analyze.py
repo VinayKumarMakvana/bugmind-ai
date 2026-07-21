@@ -102,5 +102,6 @@ async def analyze_snippet(
 
         return {
             "summary": summary_text,
-            "bugs": bugs
+            "bugs": bugs,
+            "corrected_code": review.get("corrected_code", "")
         }

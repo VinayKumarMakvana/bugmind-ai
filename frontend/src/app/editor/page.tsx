@@ -393,6 +393,19 @@ export default function EditorPage() {
                         </div>
                       </div>
                     ))}
+                    
+                    {/* Add Corrected Code section if provided by AI */}
+                    {(analysisResult as any).corrected_code && (
+                      <div className="p-4 rounded-2xl border border-green-500/20 bg-green-500/5 mt-4">
+                        <h4 className="text-sm font-semibold tracking-wide text-green-500 uppercase mb-3 flex items-center gap-2">
+                          <Sparkles className="w-4 h-4" />
+                          Corrected Code
+                        </h4>
+                        <div className="text-xs leading-relaxed prose prose-invert max-w-none prose-sm prose-pre:bg-black/80 prose-pre:border prose-pre:border-border">
+                          <ReactMarkdown>{`\`\`\`${selectedLang.id}\n${(analysisResult as any).corrected_code}\n\`\`\``}</ReactMarkdown>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
