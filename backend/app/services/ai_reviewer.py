@@ -82,7 +82,12 @@ def create_client(
         logger.warning("OpenAI API key not configured.")
         return None
 
-    return OpenAI(api_key=api_key)
+    kwargs = {"api_key": api_key}
+    
+    if hasattr(settings, "OPENAI_BASE_URL") and settings.OPENAI_BASE_URL:
+        kwargs["base_url"] = settings.OPENAI_BASE_URL
+
+    return OpenAI(**kwargs)
 
 
 # =========================================================
