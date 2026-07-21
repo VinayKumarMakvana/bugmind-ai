@@ -88,6 +88,7 @@ async def analyze_snippet(
                 "severity": issue.get("severity", "MEDIUM").lower(),
                 "title": title,
                 "description": (
+                    f"{issue.get('description', '')}\n\n"
                     f"**Why:** {issue.get('why', '')}\n\n"
                     f"**Fix:** {issue.get('fix', '')}\n\n"
                     f"**Example:**\n```\n{issue.get('example', '')}\n```"
